@@ -120,7 +120,8 @@
                             item.className = 'list-group-item';
                             item.innerHTML = `
                                 <h6>${obj.label} #${index + 1}</h6>
-                                <p class="mb-1">Coordinates [x_min, y_min, x_max, y_max]: ${JSON.stringify(obj.bbox)}</p>
+                                <p class="mb-1">Pixel Coordinates [x_min, y_min, x_max, y_max]: ${JSON.stringify(obj.bbox)}</p>
+                                <p class="text-muted small">These coordinates have been normalized from the 0-1000 range returned by the model.</p>
                             `;
                             objectsList.appendChild(item);
                         });

@@ -520,7 +520,19 @@ def bounding_boxes_process():
         image_data = image_file.read()
 
     # Prepare the prompt
-    prompt = f"Return bounding boxes for all {object_name}s in this image. Format the response as a JSON array where each item has 'box_2d' with coordinates [x_min, y_min, x_max, y_max] and 'label' with the object type."
+    prompt = f"""Return bounding boxes for all {object_name}s in this image.
+    Format the response as a JSON array where each item has:
+    - 'box_2d' with coordinates [y_min, x_min, y_max, x_max] in the 0-1000 range (normalized coordinates)
+    - 'label' with the object type
+
+    Example format:
+    [
+      {{
+        "box_2d": [100, 200, 400, 500],
+        "label": "{object_name}"
+      }}
+    ]
+    """
 
     try:
         # Call Gemini API to get bounding box
@@ -602,8 +614,33 @@ def bounding_boxes_process():
                     if len(bbox) != 4:
                         continue
 
-                    # Extract coordinates (assuming [x_min, y_min, x_max, y_max])
-                    x_min, y_min, x_max, y_max = map(int, bbox)
+                    # Extract coordinates
+                    # The model may return coordinates in the format [y_min, x_min, y_max, x_max] or [x_min, y_min, x_max, y_max]
+                    # Also, coordinates might be normalized (0-1) or in a 0-1000 range
+
+                    # First, convert all values to float to handle normalized coordinates
+                    y_min, x_min, y_max, x_max = map(float, bbox)
+
+                    # Check if coordinates are in 0-1 range (normalized)
+                    if all(0 <= coord <= 1 for coord in bbox):
+                        print(f"Detected normalized coordinates (0-1 range): {bbox}")
+                        # Already normalized, just multiply by dimensions
+                        x_min = int(x_min * width)
+                        y_min = int(y_min * height)
+                        x_max = int(x_max * width)
+                        y_max = int(y_max * height)
+                    # Check if coordinates are in 0-1000 range (as mentioned in llms.md)
+                    elif all(0 <= coord <= 1000 for coord in bbox):
+                        print(f"Detected normalized coordinates (0-1000 range): {bbox}")
+                        # Normalize by dividing by 1000 and then multiply by dimensions
+                        x_min = int((x_min / 1000) * width)
+                        y_min = int((y_min / 1000) * height)
+                        x_max = int((x_max / 1000) * width)
+                        y_max = int((y_max / 1000) * height)
+                    else:
+                        # Assume these are already pixel coordinates
+                        print(f"Detected pixel coordinates: {bbox}")
+                        x_min, y_min, x_max, y_max = map(int, bbox)
 
                     # Ensure coordinates are within image bounds
                     x_min = max(0, min(x_min, width))
