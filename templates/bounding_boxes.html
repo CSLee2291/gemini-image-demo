@@ -49,10 +49,11 @@
                                 <a id="downloadImage" href="#" class="btn btn-success" download><i class="bi bi-download"></i> Download Image</a>
                             </div>
                         </div>
-                        <div class="card">
+                        <div class="card mt-3">
                             <div class="card-body">
-                                <h6 class="card-subtitle mb-2 text-muted">Bounding Box Coordinates</h6>
-                                <p id="bboxCoordinates" class="card-text"></p>
+                                <h6 class="card-subtitle mb-2 text-muted">Detected Objects</h6>
+                                <div id="objectCount" class="alert alert-info"></div>
+                                <div id="objectsList" class="list-group mt-3"></div>
                             </div>
                         </div>
                     </div>
@@ -104,8 +105,28 @@
                 if (response.ok) {
                     // Update result card
                     document.getElementById('detectionImage').src = '/' + data.image_path;
-                    document.getElementById('bboxCoordinates').textContent =
-                        'Coordinates [ymin, xmin, ymax, xmax]: ' + JSON.stringify(data.bbox);
+
+                    // Display object count
+                    const objectCount = document.getElementById('objectCount');
+                    objectCount.textContent = `Found ${data.count} object(s)`;
+
+                    // Display objects list
+                    const objectsList = document.getElementById('objectsList');
+                    objectsList.innerHTML = '';
+
+                    if (data.objects && data.objects.length > 0) {
+                        data.objects.forEach((obj, index) => {
+                            const item = document.createElement('div');
+                            item.className = 'list-group-item';
+                            item.innerHTML = `
+                                <h6>${obj.label} #${index + 1}</h6>
+                                <p class="mb-1">Coordinates [x_min, y_min, x_max, y_max]: ${JSON.stringify(obj.bbox)}</p>
+                            `;
+                            objectsList.appendChild(item);
+                        });
+                    } else {
+                        objectsList.innerHTML = '<div class="list-group-item">No objects detected</div>';
+                    }
 
                     // Set download link
                     const downloadLink = document.getElementById('downloadImage');
