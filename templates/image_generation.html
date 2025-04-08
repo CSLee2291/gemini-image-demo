@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Generation - Gemini Image App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Image Generation</h1>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Generate an Image from Text</h5>
+                        <form id="imageGenerationForm">
+                            <div class="mb-3">
+                                <label for="prompt" class="form-label">Text Prompt</label>
+                                <textarea class="form-control" id="prompt" name="prompt" rows="3"
+                                          placeholder="Describe the image you want to generate..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Generate Image</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="loadingIndicator" class="text-center d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Generating your image... This may take a moment.</p>
+                </div>
+
+                <div id="resultCard" class="card d-none">
+                    <div class="card-body">
+                        <h5 class="card-title">Generated Image</h5>
+                        <div class="text-center">
+                            <img id="generatedImage" src="" alt="Generated Image" class="img-fluid mb-3">
+                            <div>
+                                <a id="downloadImage" href="#" class="btn btn-success" download><i class="bi bi-download"></i> Download Image</a>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">Model's Description</h6>
+                                <p id="generatedText" class="card-text"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('imageGenerationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const resultCard = document.getElementById('resultCard');
+
+            // Show loading indicator
+            loadingIndicator.classList.remove('d-none');
+            resultCard.classList.add('d-none');
+
+            try {
+                const response = await fetch('/image_generation_process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update result card
+                    document.getElementById('generatedImage').src = '/' + data.image_path;
+                    document.getElementById('generatedText').textContent = data.text || 'No description provided';
+
+                    // Set download link
+                    const downloadLink = document.getElementById('downloadImage');
+                    downloadLink.href = '/download/' + data.image_path;
+                    downloadLink.setAttribute('download', data.image_path.split('/').pop());
+
+                    // Show result card
+                    resultCard.classList.remove('d-none');
+                } else {
+                    const errorMsg = data.error || 'Unknown error occurred';
+
+                    // Check if it's an API key error
+                    if (data.error && data.error.includes('API key not set')) {
+                        if (confirm('API key not set. Would you like to go to settings to configure your API key?')) {
+                            window.location.href = '{{ url_for("settings") }}';
+                            return;
+                        }
+                    } else {
+                        alert('Error: ' + errorMsg);
+                    }
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                // Hide loading indicator
+                loadingIndicator.classList.add('d-none');
+            }
+        });
+    </script>
+</body>
+</html>

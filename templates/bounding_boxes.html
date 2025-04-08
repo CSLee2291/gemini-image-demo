@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Detection - Gemini Image App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Object Detection with Bounding Boxes</h1>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Detect Objects in an Image</h5>
+                        <form id="boundingBoxForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="image" class="form-label">Select Image</label>
+                                <input type="file" class="form-control" id="image" name="image" accept="image/*" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="object_name" class="form-label">Object to Detect</label>
+                                <input type="text" class="form-control" id="object_name" name="object_name"
+                                       placeholder="person, cat, car, etc." required>
+                                <div class="form-text">Specify what object you want to detect in the image</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Detect Object</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="loadingIndicator" class="text-center d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Detecting objects... This may take a moment.</p>
+                </div>
+
+                <div id="resultCard" class="card d-none">
+                    <div class="card-body">
+                        <h5 class="card-title">Detection Result</h5>
+                        <div class="text-center">
+                            <img id="detectionImage" src="" alt="Detection Result" class="img-fluid mb-3">
+                            <div>
+                                <a id="downloadImage" href="#" class="btn btn-success" download><i class="bi bi-download"></i> Download Image</a>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">Bounding Box Coordinates</h6>
+                                <p id="bboxCoordinates" class="card-text"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorCard" class="card d-none">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">Error</h5>
+                        <p id="errorMessage" class="card-text"></p>
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-muted">Raw Response</h6>
+                                <pre id="rawResponse" class="card-text"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('boundingBoxForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const resultCard = document.getElementById('resultCard');
+            const errorCard = document.getElementById('errorCard');
+
+            // Show loading indicator
+            loadingIndicator.classList.remove('d-none');
+            resultCard.classList.add('d-none');
+            errorCard.classList.add('d-none');
+
+            try {
+                const response = await fetch('/bounding_boxes_process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update result card
+                    document.getElementById('detectionImage').src = '/' + data.image_path;
+                    document.getElementById('bboxCoordinates').textContent =
+                        'Coordinates [ymin, xmin, ymax, xmax]: ' + JSON.stringify(data.bbox);
+
+                    // Set download link
+                    const downloadLink = document.getElementById('downloadImage');
+                    downloadLink.href = '/download/' + data.image_path;
+                    downloadLink.setAttribute('download', data.image_path.split('/').pop());
+
+                    // Show result card
+                    resultCard.classList.remove('d-none');
+                } else {
+                    const errorMsg = data.error || 'Unknown error occurred';
+
+                    // Check if it's an API key error
+                    if (data.error && data.error.includes('API key not set')) {
+                        if (confirm('API key not set. Would you like to go to settings to configure your API key?')) {
+                            window.location.href = '{{ url_for("settings") }}';
+                            return;
+                        }
+                    }
+
+                    // Show error card
+                    document.getElementById('errorMessage').textContent = errorMsg;
+                    if (data.raw_response) {
+                        document.getElementById('rawResponse').textContent = data.raw_response;
+                    }
+                    errorCard.classList.remove('d-none');
+                }
+            } catch (error) {
+                // Show error card
+                document.getElementById('errorMessage').textContent = error.message;
+                errorCard.classList.remove('d-none');
+            } finally {
+                // Hide loading indicator
+                loadingIndicator.classList.add('d-none');
+            }
+        });
+    </script>
+</body>
+</html>

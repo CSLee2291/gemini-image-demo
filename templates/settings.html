@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Gemini Image App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Settings</h1>
+        
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Gemini API Key</h5>
+                        <p class="card-text">
+                            Enter your Gemini API key below. This key will be used for all API requests to Google's Gemini services.
+                            You can get an API key from the <a href="https://ai.google.dev/" target="_blank">Google AI Studio</a>.
+                        </p>
+                        
+                        {% if message %}
+                        <div class="alert alert-{{ message_type }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
+                        
+                        <form id="apiKeyForm" method="post" action="{{ url_for('save_settings') }}">
+                            <div class="mb-3">
+                                <label for="api_key" class="form-label">API Key</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="api_key" name="api_key" 
+                                           value="{{ current_api_key }}" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Your API key is stored securely in your session.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Toggle password visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const apiKeyInput = document.getElementById('api_key');
+            const icon = this.querySelector('i');
+            
+            if (apiKeyInput.type === 'password') {
+                apiKeyInput.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                apiKeyInput.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        });
+    </script>
+</body>
+</html>
