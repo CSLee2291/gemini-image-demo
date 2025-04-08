@@ -518,43 +518,100 @@ def bounding_boxes_process():
 
         # Extract bounding box coordinates
         bbox_text = response.text.strip()
+        print(f"Raw response: {bbox_text}")
 
-        # Try to parse the response as a list
+        # Try to parse the response
         try:
             # Remove any markdown formatting
             if "```" in bbox_text:
-                bbox_text = bbox_text.split("```")[1].strip()
+                # Extract content between code blocks
+                code_blocks = bbox_text.split("```")
+                for block in code_blocks:
+                    if block.strip() and not block.strip().startswith("json"):
+                        bbox_text = block.strip()
+                        break
+                    elif block.strip().startswith("json"):
+                        bbox_text = block.replace("json", "", 1).strip()
+                        break
 
-            # Convert string representation of list to actual list
-            bbox = json.loads(bbox_text.replace("'", '"'))
+            # Handle case where response starts with "json\n"
+            if bbox_text.startswith("json\n"):
+                bbox_text = bbox_text.replace("json\n", "", 1)
+
+            print(f"Cleaned text: {bbox_text}")
+
+            # Parse the JSON
+            parsed_data = json.loads(bbox_text)
+            print(f"Parsed data: {parsed_data}")
+
+            # Check if we have a list of objects with box_2d
+            if isinstance(parsed_data, list) and len(parsed_data) > 0 and "box_2d" in parsed_data[0]:
+                # Get the first bounding box
+                bbox = parsed_data[0]["box_2d"]
+                label = parsed_data[0].get("label", "object")
+                print(f"Found bounding box: {bbox} for {label}")
+            else:
+                # Assume it's a direct list of coordinates
+                bbox = parsed_data
+                label = "object"
+                print(f"Using direct coordinates: {bbox}")
 
             # Open the original image again for drawing
             original_image = Image.open(image_path)
             width, height = original_image.size
 
-            # Normalize coordinates if needed (assuming model returns values between 0 and 1)
-            if all(0 <= coord <= 1 for coord in bbox):
-                y_min, x_min, y_max, x_max = bbox
-                y_min = int(y_min * height)
-                x_min = int(x_min * width)
-                y_max = int(y_max * height)
-                x_max = int(x_max * width)
+            # Extract coordinates
+            if len(bbox) == 4:
+                # Assume format is [y_min, x_min, y_max, x_max] or [x_min, y_min, x_max, y_max]
+                # Try to determine which format based on values
+                if bbox[0] < bbox[2] and bbox[1] < bbox[3]:
+                    # Likely [x_min, y_min, x_max, y_max]
+                    x_min, y_min, x_max, y_max = map(int, bbox)
+                else:
+                    # Assume [y_min, x_min, y_max, x_max]
+                    y_min, x_min, y_max, x_max = map(int, bbox)
+
+                # Ensure coordinates are within image bounds
+                x_min = max(0, min(x_min, width))
+                y_min = max(0, min(y_min, height))
+                x_max = max(0, min(x_max, width))
+                y_max = max(0, min(y_max, height))
+
+                print(f"Drawing rectangle at: ({x_min}, {y_min}), ({x_max}, {y_max})")
+
+                # Draw bounding box on image
+                draw = ImageDraw.Draw(original_image)
+                draw.rectangle([(x_min, y_min), (x_max, y_max)], outline="red", width=3)
+
+                # Add label text
+                font = None
+                try:
+                    font = ImageFont.truetype("arial.ttf", 20)
+                except IOError:
+                    font = ImageFont.load_default()
+
+                # Draw label with background
+                text_bbox = draw.textbbox((x_min, y_min-25), label, font=font)
+                draw.rectangle([text_bbox[0]-5, text_bbox[1]-5, text_bbox[2]+5, text_bbox[3]+5], fill="red")
+                draw.text((x_min, y_min-25), label, fill="white", font=font)
+
+                # Save the image with bounding box
+                bbox_filename = f"bbox_{os.urandom(4).hex()}.png"
+                bbox_path = os.path.join(app.config['RESULTS_FOLDER'], bbox_filename)
+                original_image.save(bbox_path)
+
+                # Return the result
+                return jsonify({
+                    'bbox': bbox,
+                    'label': label,
+                    'image_path': os.path.join('static', 'results', bbox_filename)
+                })
             else:
-                y_min, x_min, y_max, x_max = map(int, bbox)
-
-            # Draw bounding box on image
-            draw = ImageDraw.Draw(original_image)
-            draw.rectangle([(x_min, y_min), (x_max, y_max)], outline="red", width=3)
-
-            # Save the image with bounding box
-            bbox_filename = f"bbox_{os.urandom(4).hex()}.png"
-            bbox_path = os.path.join(app.config['RESULTS_FOLDER'], bbox_filename)
-            original_image.save(bbox_path)
-
-            return jsonify({
-                'bbox': bbox,
-                'image_path': os.path.join('static', 'results', bbox_filename)
-            })
+                # No valid bounding box found
+                return jsonify({
+                    'error': 'Could not extract valid bounding box coordinates',
+                    'raw_response': bbox_text
+                }), 400
         except Exception as e:
             return jsonify({
                 'error': f'Failed to parse bounding box: {str(e)}',
