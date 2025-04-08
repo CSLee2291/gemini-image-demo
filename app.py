@@ -103,13 +103,28 @@ def save_settings():
 
 @app.route('/download/<path:filename>')
 def download_file(filename):
-    # Ensure the file exists and is within our allowed directories
-    if os.path.exists(filename) and (filename.startswith(UPLOAD_FOLDER) or filename.startswith(RESULTS_FOLDER)):
+    # Handle paths that start with 'static/'
+    if filename.startswith('static/'):
+        # Remove 'static/' prefix to get the relative path
+        relative_path = filename[7:]
+        directory = 'static'
+        return send_from_directory(directory=directory, path=relative_path, as_attachment=True)
+
+    # For direct paths, check if they exist and are within allowed directories
+    full_path = os.path.join(os.getcwd(), filename)
+    if os.path.exists(full_path) and (filename.startswith(UPLOAD_FOLDER) or filename.startswith(RESULTS_FOLDER)):
         directory = os.path.dirname(filename)
         file_name = os.path.basename(filename)
         return send_from_directory(directory=directory, path=file_name, as_attachment=True)
-    else:
-        return jsonify({'error': 'File not found'}), 404
+
+    # If the file doesn't exist, try to find it in the results folder
+    if '/' in filename:
+        file_name = filename.split('/')[-1]
+        if os.path.exists(os.path.join(RESULTS_FOLDER, file_name)):
+            return send_from_directory(directory=RESULTS_FOLDER, path=file_name, as_attachment=True)
+
+    # File not found
+    return jsonify({'error': f'File not found: {filename}'}), 404
 
 @app.route('/image_qa')
 def image_qa():
