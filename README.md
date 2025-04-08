@@ -63,6 +63,32 @@ A Flask-based web application that demonstrates various image-related capabiliti
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Summary of Changes
+
+### Model Updates
+- Updated to use `gemini-2.0-flash` model for image QA instead of older models
+- Changed image generation to use `gemini-2.0-flash-exp-image-generation` as primary model
+- Added `imagen-3.0-generate-002` as fallback model for image generation
+- Updated all API calls to use the client-based approach with the `google-genai` package
+
+### Feature Improvements
+- **Bounding Box Detection**:
+  - Added support for detecting multiple objects in a single image
+  - Implemented coordinate normalization (dividing by 1000 and multiplying by image dimensions)
+  - Added color-coding for different detected objects
+  - Improved JSON parsing for more reliable object detection
+- **Image Generation**:
+  - Enhanced error handling and fallback mechanisms
+  - Added better success messages indicating which model was used
+- **Download Functionality**:
+  - Fixed file path handling for downloaded images
+  - Added better error messages for failed downloads
+
+### UI Enhancements
+- Updated object detection UI to display multiple objects with their labels
+- Added coordinate information display for detected objects
+- Improved error handling and user feedback
+
 ## Acknowledgements
 
 - Based on examples from [Gemini by Example](https://geminibyexample.com/)
