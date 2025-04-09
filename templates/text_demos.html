@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Demos - Gemini Image App</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Text Generation Demos</h1>
+
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <p class="card-text">
+                            This page demonstrates various text-based capabilities of Google's Gemini API.
+                            Choose one of the demos below to explore different text generation features.
+                        </p>
+                        <div class="mt-3">
+                            <h6>Available Demos:</h6>
+                            <ul class="list-group">
+                                <li class="list-group-item"><strong>Simple text generation</strong>: Generate text based on a prompt.</li>
+                                <li class="list-group-item"><strong>Streaming text</strong>: Generate text content and stream the output in real-time.</li>
+                                <li class="list-group-item"><strong>System prompt</strong>: Use system instructions to guide the model's behavior.</li>
+                                <li class="list-group-item"><strong>Reasoning models</strong>: Access the reasoning trace of a Gemini model and then the final text output.</li>
+                                <li class="list-group-item"><strong>Structured output</strong>: Generate structured data using predefined schemas.</li>
+                            </ul>
+                        </div>
+                        <div class="text-center">
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs for different demos -->
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <ul class="nav nav-tabs" id="textDemoTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="simple-tab" data-bs-toggle="tab" data-bs-target="#simple" type="button" role="tab" aria-controls="simple" aria-selected="true">Simple Text</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="streaming-tab" data-bs-toggle="tab" data-bs-target="#streaming" type="button" role="tab" aria-controls="streaming" aria-selected="false">Streaming Text</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button" role="tab" aria-controls="system" aria-selected="false">System Prompt</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="reasoning-tab" data-bs-toggle="tab" data-bs-target="#reasoning" type="button" role="tab" aria-controls="reasoning" aria-selected="false">Reasoning</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="structured-tab" data-bs-toggle="tab" data-bs-target="#structured" type="button" role="tab" aria-controls="structured" aria-selected="false">Structured Output</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="textDemoTabContent">
+                    <!-- Simple Text Generation -->
+                    <div class="tab-pane fade show active" id="simple" role="tabpanel" aria-labelledby="simple-tab">
+                        <div class="card border-top-0 rounded-top-0">
+                            <div class="card-body">
+                                <h5 class="card-title">Simple Text Generation</h5>
+                                <p class="card-text">Enter a prompt and get a text response from Gemini. This demonstrates basic text generation capabilities.</p>
+                                <p><a href="https://geminibyexample.com/001-basic-generation/" target="_blank" class="text-decoration-none">Learn more <i class="bi bi-box-arrow-up-right"></i></a></p>
+
+                                <form id="simpleTextForm">
+                                    <div class="mb-3">
+                                        <label for="simplePrompt" class="form-label">Prompt</label>
+                                        <textarea class="form-control" id="simplePrompt" rows="3" placeholder="Enter your prompt here..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate</button>
+                                </form>
+
+                                <div id="simpleTextResult" class="mt-4 d-none">
+                                    <h6>Result:</h6>
+                                    <div class="result-container p-3 border rounded bg-light">
+                                        <div id="simpleTextOutput"></div>
+                                    </div>
+                                </div>
+
+                                <div id="simpleTextLoading" class="text-center mt-4 d-none">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Generating response...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Streaming Text -->
+                    <div class="tab-pane fade" id="streaming" role="tabpanel" aria-labelledby="streaming-tab">
+                        <div class="card border-top-0 rounded-top-0">
+                            <div class="card-body">
+                                <h5 class="card-title">Streaming Text Generation</h5>
+                                <p class="card-text">See the response being generated in real-time as it streams from the API. This demonstrates how to use the Gemini API to generate text content and stream the output.</p>
+                                <p><a href="https://geminibyexample.com/002-streaming-text/" target="_blank" class="text-decoration-none">Learn more <i class="bi bi-box-arrow-up-right"></i></a></p>
+
+                                <form id="streamingTextForm">
+                                    <div class="mb-3">
+                                        <label for="streamingPrompt" class="form-label">Prompt</label>
+                                        <textarea class="form-control" id="streamingPrompt" rows="3" placeholder="Enter your prompt here..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate</button>
+                                </form>
+
+                                <div id="streamingTextResult" class="mt-4 d-none">
+                                    <h6>Result:</h6>
+                                    <div class="result-container p-3 border rounded bg-light">
+                                        <div id="streamingTextOutput"></div>
+                                    </div>
+                                </div>
+
+                                <div id="streamingTextLoading" class="text-center mt-4 d-none">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Connecting to stream...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Prompt -->
+                    <div class="tab-pane fade" id="system" role="tabpanel" aria-labelledby="system-tab">
+                        <div class="card border-top-0 rounded-top-0">
+                            <div class="card-body">
+                                <h5 class="card-title">System Prompt</h5>
+                                <p class="card-text">Use system instructions to guide the model's behavior. This demonstrates how to use system instructions to control the model's responses.</p>
+                                <p><a href="https://geminibyexample.com/003-system-prompt/" target="_blank" class="text-decoration-none">Learn more <i class="bi bi-box-arrow-up-right"></i></a></p>
+
+                                <form id="systemPromptForm">
+                                    <div class="mb-3">
+                                        <label for="systemInstruction" class="form-label">System Instruction</label>
+                                        <textarea class="form-control" id="systemInstruction" rows="2"
+                                            placeholder="E.g., You are a helpful assistant that speaks like a pirate." required></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="userPrompt" class="form-label">User Prompt</label>
+                                        <textarea class="form-control" id="userPrompt" rows="2"
+                                            placeholder="Enter your prompt here..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate</button>
+                                </form>
+
+                                <div id="systemPromptResult" class="mt-4 d-none">
+                                    <h6>Result:</h6>
+                                    <div class="result-container p-3 border rounded bg-light">
+                                        <div id="systemPromptOutput"></div>
+                                    </div>
+                                </div>
+
+                                <div id="systemPromptLoading" class="text-center mt-4 d-none">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Generating response...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reasoning Models -->
+                    <div class="tab-pane fade" id="reasoning" role="tabpanel" aria-labelledby="reasoning-tab">
+                        <div class="card border-top-0 rounded-top-0">
+                            <div class="card-body">
+                                <h5 class="card-title">Reasoning Models</h5>
+                                <p class="card-text">Access the reasoning trace of the model before getting the final output. This demonstrates how to access the reasoning trace of a Gemini model and then the final text output.</p>
+                                <p><a href="https://geminibyexample.com/019-reasoning-models/" target="_blank" class="text-decoration-none">Learn more <i class="bi bi-box-arrow-up-right"></i></a></p>
+
+                                <form id="reasoningForm">
+                                    <div class="mb-3">
+                                        <label for="reasoningPrompt" class="form-label">Prompt</label>
+                                        <textarea class="form-control" id="reasoningPrompt" rows="3"
+                                            placeholder="Enter a complex question or problem..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate</button>
+                                </form>
+
+                                <div id="reasoningResult" class="mt-4 d-none">
+                                    <h6>Reasoning Process:</h6>
+                                    <div class="result-container p-3 border rounded bg-light mb-3">
+                                        <div id="reasoningTrace"></div>
+                                    </div>
+
+                                    <h6>Final Answer:</h6>
+                                    <div class="result-container p-3 border rounded bg-light">
+                                        <div id="reasoningOutput"></div>
+                                    </div>
+                                </div>
+
+                                <div id="reasoningLoading" class="text-center mt-4 d-none">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Generating response with reasoning...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Structured Output -->
+                    <div class="tab-pane fade" id="structured" role="tabpanel" aria-labelledby="structured-tab">
+                        <div class="card border-top-0 rounded-top-0">
+                            <div class="card-body">
+                                <h5 class="card-title">Structured Output</h5>
+                                <p class="card-text">Generate structured data using a predefined schema. This demonstrates how to generate structured data using a pydantic model to represent data with specific fields and types.</p>
+                                <p><a href="https://geminibyexample.com/020-structured-output/" target="_blank" class="text-decoration-none">Learn more <i class="bi bi-box-arrow-up-right"></i></a></p>
+
+                                <form id="structuredOutputForm">
+                                    <div class="mb-3">
+                                        <label for="structuredPrompt" class="form-label">Prompt</label>
+                                        <textarea class="form-control" id="structuredPrompt" rows="3"
+                                            placeholder="E.g., Generate 3 fictional cats with unique abilities" required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate</button>
+                                </form>
+
+                                <div id="structuredResult" class="mt-4 d-none">
+                                    <h6>Result:</h6>
+                                    <div class="result-container p-3 border rounded bg-light">
+                                        <pre id="structuredOutput" class="mb-0"></pre>
+                                    </div>
+                                </div>
+
+                                <div id="structuredLoading" class="text-center mt-4 d-none">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Generating structured data...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/text_demos.js') }}"></script>
+</body>
+</html>

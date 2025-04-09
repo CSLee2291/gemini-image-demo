@@ -1,12 +1,15 @@
 import os
 import base64
 import json
+import time
 from io import BytesIO
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory, flash, Response
 import requests
 from PIL import Image, ImageDraw, ImageFont
 from google import genai
 from google.genai import types
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -33,6 +36,12 @@ def configure_gemini_client():
 # Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
+
+# Define Pydantic model for structured output
+class Cat(BaseModel):
+    name: str = Field(..., description="The cat's name")
+    color: str = Field(..., description="The cat's fur color")
+    special_ability: str = Field(..., description="The cat's unique special ability")
 
 # Helper function to save uploaded file
 def save_uploaded_file(file):
@@ -799,6 +808,200 @@ def image_segmentation_process():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/text_demos')
+def text_demos():
+    # Check if API key is set
+    api_key = session.get(API_KEY_SESSION_KEY)
+    if not api_key:
+        return redirect(url_for('settings', message='Please set your Gemini API key to use the application.', message_type='warning'))
+    return render_template('text_demos.html')
+
+@app.route('/text_generation_process', methods=['POST'])
+def text_generation_process():
+    # Check if API key is set and get client
+    client = configure_gemini_client()
+    if not client:
+        return jsonify({'error': 'API key not set. Please configure your API key in settings.'}), 401
+
+    # Get data from request
+    data = request.get_json()
+    prompt = data.get('prompt', '')
+    demo_type = data.get('demo_type', 'simple')
+
+    if not prompt:
+        return jsonify({'error': 'No prompt provided'}), 400
+
+    try:
+        # Handle different demo types
+        if demo_type == 'simple':
+            # Simple text generation
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt
+            )
+            return jsonify({'text': response.text})
+
+        elif demo_type == 'system':
+            # System prompt
+            system_instruction = data.get('system_instruction', '')
+            if not system_instruction:
+                return jsonify({'error': 'No system instruction provided'}), 400
+
+            # Create a chat with system instruction
+            chat = client.models.start_chat(
+                model="gemini-2.0-flash",
+                system_instruction=system_instruction
+            )
+
+            # Send the user prompt
+            response = chat.send_message(prompt)
+            return jsonify({'text': response.text})
+
+        elif demo_type == 'reasoning':
+            # Reasoning models
+            # First, get the reasoning trace
+            response_with_trace = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=f"""
+                I need you to solve this problem step by step, showing your reasoning:
+                {prompt}
+
+                First, explain your thought process in detail.
+                Then, provide the final answer.
+                """
+            )
+
+            # Extract reasoning and final answer
+            full_text = response_with_trace.text
+
+            # Split the reasoning and final answer (simple heuristic)
+            parts = full_text.split('Final answer:', 1)
+
+            if len(parts) > 1:
+                reasoning = parts[0].strip()
+                final_answer = parts[1].strip()
+            else:
+                # If no clear separation, use the first 80% as reasoning and the rest as answer
+                split_point = int(len(full_text) * 0.8)
+                reasoning = full_text[:split_point].strip()
+                final_answer = full_text[split_point:].strip()
+
+            return jsonify({
+                'reasoning': reasoning,
+                'text': final_answer
+            })
+
+        elif demo_type == 'structured':
+            # Structured output using Pydantic
+            # Define the prompt for structured data
+            structured_prompt = f"""
+            Generate structured data for cats based on this request: {prompt}
+
+            The response should be a JSON array where each item has:
+            - 'name': The cat's name
+            - 'color': The cat's fur color
+            - 'special_ability': The cat's unique special ability
+
+            Example format:
+            [
+              {{
+                \"name\": \"Whiskers\",
+                \"color\": \"Orange Tabby\",
+                \"special_ability\": \"Can find hidden treats anywhere\"
+              }}
+            ]
+
+            Return ONLY the JSON array, nothing else.
+            """
+
+            # Generate the structured data
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=structured_prompt
+            )
+
+            # Extract JSON from the response
+            response_text = response.text
+
+            # Try to find JSON between code blocks
+            if "```json" in response_text:
+                json_str = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                # Try any code block
+                parts = response_text.split("```")
+                for i, part in enumerate(parts):
+                    if i > 0 and i % 2 == 1:  # Inside a code block
+                        json_str = part.strip()
+                        if json_str.startswith("json"):
+                            json_str = json_str[4:].strip()
+                        break
+                else:
+                    # No valid code block found
+                    json_str = response_text
+            else:
+                # Try to extract JSON array directly
+                start_idx = response_text.find("[")
+                end_idx = response_text.rfind("]")
+                if start_idx != -1 and end_idx != -1:
+                    json_str = response_text[start_idx:end_idx+1]
+                else:
+                    json_str = response_text
+
+            # Parse the JSON data
+            try:
+                structured_data = json.loads(json_str)
+                # Validate with Pydantic (optional)
+                # cats = [Cat(**cat_data) for cat_data in structured_data]
+                return jsonify({'structured': structured_data})
+            except json.JSONDecodeError:
+                return jsonify({'structured': json_str, 'error': 'Could not parse JSON'})
+
+        else:
+            return jsonify({'error': f'Unknown demo type: {demo_type}'}), 400
+
+    except Exception as e:
+        print(f"Error in text generation: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/text_streaming_process')
+def text_streaming_process():
+    # Check if API key is set and get client
+    client = configure_gemini_client()
+    if not client:
+        return jsonify({'error': 'API key not set. Please configure your API key in settings.'}), 401
+
+    prompt = request.args.get('prompt', '')
+    if not prompt:
+        return jsonify({'error': 'No prompt provided'}), 400
+
+    def generate():
+        try:
+            # Generate content with streaming
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                stream=True
+            )
+
+            # Stream the response chunks
+            for chunk in response:
+                if hasattr(chunk, 'text'):
+                    # Send each chunk as a server-sent event
+                    data = json.dumps({'text': chunk.text, 'done': False})
+                    yield f"data: {data}\n\n"
+                    # Small delay to make streaming visible
+                    time.sleep(0.05)
+
+            # Send completion event
+            yield f"data: {json.dumps({'done': True})}\n\n"
+
+        except Exception as e:
+            print(f"Streaming error: {str(e)}")
+            error_data = json.dumps({'error': str(e), 'done': True})
+            yield f"data: {error_data}\n\n"
+
+    return Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
     app.run(debug=True)
