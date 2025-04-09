@@ -731,16 +731,26 @@ def image_segmentation_process():
     # Prepare the prompt for image segmentation
     prompt = """
     Give the segmentation masks for objects in the image.
-    Output a JSON list of segmentation masks where each entry contains the 2D
-    bounding box in the key "box_2d", the segmentation mask in key "mask", and
-    the text label in the key "label". Use descriptive labels.
+    Output a JSON list of segmentation masks where each entry contains:
+    1. The 2D bounding box in the key "box_2d" with coordinates [y_min, x_min, y_max, x_max] in the 0-1000 range
+    2. The segmentation mask in key "mask" as a base64-encoded PNG image
+    3. The text label in the key "label" with a descriptive name of the object
+
+    Example format:
+    [
+      {
+        "box_2d": [100, 200, 400, 500],
+        "mask": "base64-encoded-png-data",
+        "label": "person"
+      }
+    ]
     """
 
     try:
-        # Call Gemini API for segmentation
-        print("Using Gemini 2.0 Flash for image segmentation")
+        # Call Gemini API for segmentation using the gemini-2.5-pro-exp-03-25 model
+        print("Using Gemini 2.5 Pro Exp for image segmentation")
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-pro-exp-03-25",
             contents=[prompt, types.Part.from_bytes(data=image_data, mime_type=file.content_type)]
         )
         print("Successfully processed image segmentation request")
@@ -755,6 +765,9 @@ def image_segmentation_process():
             json_str = response_text[start:end]
         else:
             json_str = response_text
+
+        # Log the raw JSON response
+        print(f"Raw JSON response: {json_str}")
 
         # Parse JSON data
         mask_data = json.loads(json_str)
